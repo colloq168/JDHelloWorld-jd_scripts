@@ -1,0 +1,33 @@
+name: github-to-cos
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.repository.owner.id == github.event.sender.id }}
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js 10.x
+        uses: actions/setup-node@v1
+      - name: Install coscmd
+        run: sudo pip install coscmd
+      - name: Configure coscmd
+        env:
+          SECRET_ID: ${{ secrets.SECRET_ID }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          BUCKET: ${{ secrets.BUCKET }}
+          REGION: ${{ secrets.REGION }}
+        run: coscmd config -a $SECRET_ID -s $SECRET_KEY -b $BUCKET -r $REGION
+      - name: Upload
+        run: git checkout main && coscmd upload -rs --delete -f ./ / --ignore "./.git/*"
+      - name: Delete Workflow Runs
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+         token: ${{ github.token }}
+         repository: ${{ github.repository }}
+         retain_days: 1
+         keep_minimum_runs: 0
